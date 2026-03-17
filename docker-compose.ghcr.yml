@@ -1,0 +1,26 @@
+version: '3.8'
+
+# This compose file uses the pre-built image from GitHub Container Registry
+# No need to build locally!
+
+services:
+  nano-vllm:
+    image: ghcr.io/warjiang/nano-vllm:latest
+    container_name: nano-vllm
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+      - HF_HOME=/workspace/.cache/huggingface
+    volumes:
+      # Mount host model directory to container
+      - ~/huggingface:/workspace/models:ro
+      # Persist HuggingFace cache
+      - hf-cache:/workspace/.cache/huggingface
+    # Override default command to keep container running
+    command: /bin/bash -c "echo 'Nano-vLLM container ready. Run example with: python example.py' && tail -f /dev/null"
+    stdin_open: true
+    tty: true
+
+volumes:
+  hf-cache:
