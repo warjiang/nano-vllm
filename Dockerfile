@@ -27,6 +27,8 @@ LABEL org.opencontainers.image.title="Nano-vLLM" \
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
+ENV PIP_ROOT_USER_ACTION=ignore
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 ENV CUDA_HOME=/usr/local/cuda
 ENV PATH=${CUDA_HOME}/bin:${PATH}
 ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
@@ -72,7 +74,7 @@ COPY example.py bench.py ./
 RUN pip install --no-cache-dir -e . --no-deps
 
 # Install huggingface-cli for model download
-RUN pip install --no-cache-dir huggingface-hub
+RUN python -m pip install --no-cache-dir huggingface-hub
 
 # Set environment variable for HuggingFace cache
 ENV HF_HOME=/workspace/.cache/huggingface
@@ -81,7 +83,7 @@ ENV HUGGINGFACE_HUB_CACHE=/workspace/.cache/huggingface/hub
 # Download default model (Qwen/Qwen3-0.6B) during build
 # This makes the image ready to use immediately
 RUN mkdir -p /workspace/models/Qwen3-0.6B && \
-    if [ "${DOWNLOAD_MODEL}" = "1" ]; then huggingface-cli download Qwen/Qwen3-0.6B --local-dir /workspace/models/Qwen3-0.6B --local-dir-use-symlinks False; fi
+    if [ "${DOWNLOAD_MODEL}" = "1" ]; then python -m huggingface_hub.cli download Qwen/Qwen3-0.6B --local-dir /workspace/models/Qwen3-0.6B --local-dir-use-symlinks False; fi
 
 # Expose port for potential API service
 EXPOSE 8000
