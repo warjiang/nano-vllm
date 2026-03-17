@@ -9,6 +9,11 @@ FROM nvidia/cuda:12.1.0-devel-ubuntu22.04
 ARG BUILD_DATE
 ARG VCS_REF
 ARG VERSION=0.2.0
+ARG MAX_JOBS=4
+ARG TORCH_VERSION=2.4.0
+ARG TORCH_CUDA=cu121
+ARG FLASH_ATTN_VERSION=2.8.3
+ARG DOWNLOAD_MODEL=1
 
 # Labels for the image
 LABEL org.opencontainers.image.title="Nano-vLLM" \
@@ -25,7 +30,7 @@ ENV PYTHONUNBUFFERED=1
 ENV CUDA_HOME=/usr/local/cuda
 ENV PATH=${CUDA_HOME}/bin:${PATH}
 ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
-ENV MAX_JOBS=1
+ENV MAX_JOBS=${MAX_JOBS}
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -47,14 +52,10 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 &
 RUN python -m pip install --upgrade pip setuptools wheel packaging ninja
 
 # Install PyTorch with CUDA support
-RUN pip install --no-cache-dir torch>=2.4.0 triton>=3.0.0
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/${TORCH_CUDA} "torch==${TORCH_VERSION}+${TORCH_CUDA}" && \
+    pip install --no-cache-dir "triton>=3.0.0"
 
-# Install flash-attn from source with proper environment
-# First clone the repo, then install
-RUN git clone --depth 1 --branch v2.8.3 https://github.com/Dao-AILab/flash-attention.git /tmp/flash-attention && \
-    cd /tmp/flash-attention && \
-    pip install --no-cache-dir . --no-build-isolation && \
-    rm -rf /tmp/flash-attention
+RUN pip install --no-cache-dir --prefer-binary "flash-attn==${FLASH_ATTN_VERSION}" --no-build-isolation
 
 # Install other dependencies
 RUN pip install --no-cache-dir transformers>=4.51.0 xxhash
@@ -80,9 +81,7 @@ ENV HUGGINGFACE_HUB_CACHE=/workspace/.cache/huggingface/hub
 # Download default model (Qwen/Qwen3-0.6B) during build
 # This makes the image ready to use immediately
 RUN mkdir -p /workspace/models/Qwen3-0.6B && \
-    huggingface-cli download Qwen/Qwen3-0.6B \
-    --local-dir /workspace/models/Qwen3-0.6B \
-    --local-dir-use-symlinks False
+    if [ "${DOWNLOAD_MODEL}" = "1" ]; then huggingface-cli download Qwen/Qwen3-0.6B --local-dir /workspace/models/Qwen3-0.6B --local-dir-use-symlinks False; fi
 
 # Expose port for potential API service
 EXPOSE 8000
