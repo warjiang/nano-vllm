@@ -7,7 +7,6 @@ This workflow automatically builds and pushes the Docker image to GitHub Contain
 ### Supported Platforms
 
 - **linux/amd64** - x86_64 architecture (Intel/AMD CPUs)
-- **linux/arm64** - ARM64 architecture (Apple Silicon, AWS Graviton, etc.)
 
 ### Triggers
 
@@ -20,7 +19,7 @@ The workflow runs on:
 ### Image Tags
 
 Images are tagged with:
-- `latest` - Latest stable build from main branch (multi-arch manifest)
+- `latest` - Latest stable build from main branch
 - `main` - Latest build from main branch
 - `pr-{number}` - Pull request builds
 - `{version}` - Semantic version (e.g., `0.2.0`)
@@ -36,30 +35,17 @@ Images are tagged with:
 # Login to GHCR (optional for public repos)
 echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
 
-# Pull the latest image (automatically selects correct architecture)
+# Pull the latest image
 docker pull ghcr.io/warjiang/nano-vllm:latest
 
 # Pull a specific version
 docker pull ghcr.io/warjiang/nano-vllm:v0.2.0
-
-# Pull for specific architecture
-docker pull --platform linux/amd64 ghcr.io/warjiang/nano-vllm:latest
-docker pull --platform linux/arm64 ghcr.io/warjiang/nano-vllm:latest
-
-# Verify image architecture
-docker inspect ghcr.io/warjiang/nano-vllm:latest | grep Architecture
 ```
 
 #### Run the container
 
 ```bash
-# Docker automatically selects the correct architecture
 docker run --rm --gpus all \
-  -v ~/huggingface:/workspace/models:ro \
-  ghcr.io/warjiang/nano-vllm:latest
-
-# Force specific architecture
-docker run --rm --platform linux/arm64 --gpus all \
   -v ~/huggingface:/workspace/models:ro \
   ghcr.io/warjiang/nano-vllm:latest
 ```
@@ -83,9 +69,13 @@ The workflow uses GitHub Actions cache (`type=gha`) to speed up subsequent build
 
 ### Build Time Considerations
 
-- **AMD64**: ~10-15 minutes (including flash-attn compilation)
-- **ARM64**: ~20-30 minutes (flash-attn compilation is slower on ARM64)
-- **Total workflow time**: ~30-45 minutes for both architectures
+- **AMD64**: ~15-25 minutes (including flash-attn compilation and model download)
+
+### Pre-installed Model
+
+The Docker image includes the **Qwen/Qwen3-0.6B** model by default, so you can run inference immediately without downloading models separately.
+
+Model location in container: `/workspace/models/Qwen3-0.6B`
 
 ### Manual Build
 
@@ -97,24 +87,16 @@ To manually trigger a build with a custom tag:
 4. Optionally enter a custom tag
 5. Click **"Run workflow"**
 
-### Local Multi-Platform Build
+### Local Build
 
-To build multi-platform images locally:
+To build the image locally:
 
 ```bash
-# Create a multi-platform builder
-docker buildx create --name multiplatform --use
-docker buildx inspect --bootstrap
+# Build locally
+docker build -t ghcr.io/warjiang/nano-vllm:local .
 
-# Build for multiple platforms
-docker buildx build \
-  --platform linux/amd64,linux/arm64 \
-  --tag ghcr.io/warjiang/nano-vllm:local \
-  --push .
-
-# Or build and load for local testing (single platform only)
-docker buildx build \
-  --platform linux/amd64 \
-  --tag nano-vllm:local \
-  --load .
+# Run locally
+docker run --rm --gpus all \
+  -v ~/huggingface:/workspace/models:ro \
+  ghcr.io/warjiang/nano-vllm:local
 ```

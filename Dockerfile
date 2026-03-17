@@ -1,9 +1,8 @@
 # Nano-vLLM Docker Image
 # A lightweight vLLM implementation built from scratch
-# Supports: linux/amd64, linux/arm64
+# Supports: linux/amd64
 
 # Use NVIDIA CUDA base image with Python 3.10
-# Note: CUDA images support both amd64 and arm64 architectures
 FROM nvidia/cuda:12.1.0-devel-ubuntu22.04
 
 # Build arguments for metadata
@@ -27,15 +26,6 @@ ENV CUDA_HOME=/usr/local/cuda
 ENV PATH=${CUDA_HOME}/bin:${PATH}
 ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
 
-# Detect architecture and set environment variables
-RUN dpkgArch="$(dpkg --print-architecture)" && \
-    echo "Building for architecture: ${dpkgArch}" && \
-    case "${dpkgArch}" in \
-        amd64) echo "x86_64 architecture detected" ;; \
-        arm64) echo "ARM64 architecture detected" ;; \
-        *) echo "Unsupported architecture: ${dpkgArch}" && exit 1 ;; \
-    esac
-
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     python3.10 \
@@ -56,7 +46,6 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 &
 RUN python -m pip install --upgrade pip setuptools wheel
 
 # Install PyTorch with CUDA support
-# PyTorch automatically selects the correct wheel for the architecture
 RUN pip install --no-cache-dir \
     packaging \
     ninja \
@@ -72,22 +61,28 @@ COPY nanovllm/ ./nanovllm/
 COPY example.py bench.py ./
 
 # Install the package
-# Note: flash-attn compilation takes a while on both architectures
-# For ARM64, flash-attn may take significantly longer to compile
+# Note: flash-attn compilation takes a while
 RUN pip install --no-cache-dir -e .
 
 # Install huggingface-cli for model download
 RUN pip install --no-cache-dir huggingface-hub
 
-# Create directory for model weights
-RUN mkdir -p /workspace/models
-
 # Set environment variable for HuggingFace cache
 ENV HF_HOME=/workspace/.cache/huggingface
 ENV HUGGINGFACE_HUB_CACHE=/workspace/.cache/huggingface/hub
 
+# Download default model (Qwen/Qwen3-0.6B) during build
+# This makes the image ready to use immediately
+RUN mkdir -p /workspace/models/Qwen3-0.6B && \
+    huggingface-cli download Qwen/Qwen3-0.6B \
+    --local-dir /workspace/models/Qwen3-0.6B \
+    --local-dir-use-symlinks False
+
 # Expose port for potential API service
 EXPOSE 8000
+
+# Set default model path environment variable
+ENV MODEL_PATH=/workspace/models/Qwen3-0.6B
 
 # Default command
 CMD ["python", "example.py"]
