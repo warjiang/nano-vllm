@@ -34,14 +34,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Allocate Swap Space
-        run: |
-          sudo dd if=/dev/zero of=/swapfile bs=1M count=10240
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
-          sudo sysctl vm.swappiness=10
-          sudo sysctl vm.vfs_cache_pressure=50
-          free -h
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 10
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
