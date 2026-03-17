@@ -80,9 +80,6 @@ RUN python -m pip install --no-cache-dir huggingface-hub
 ENV HF_HOME=/workspace/.cache/huggingface
 ENV HUGGINGFACE_HUB_CACHE=/workspace/.cache/huggingface/hub
 
-# Download default model (Qwen/Qwen3-0.6B) during build
-# This makes the image ready to use immediately
-RUN curl -LsSf https://hf.co/cli/install.sh | bash && huggingface-cli download --resume-download Qwen/Qwen3-0.6B
 
 # Expose port for potential API service
 EXPOSE 8000
