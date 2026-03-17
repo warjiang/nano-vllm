@@ -45,12 +45,15 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 &
 # Upgrade pip
 RUN python -m pip install --upgrade pip setuptools wheel
 
-# Install PyTorch with CUDA support
+# Install PyTorch with CUDA support first (required for flash-attn build)
 RUN pip install --no-cache-dir \
     packaging \
     ninja \
     torch>=2.4.0 \
     triton>=3.0.0
+
+# Install flash-attn separately (requires torch to be installed first)
+RUN pip install --no-cache-dir flash-attn --no-build-isolation
 
 # Set working directory
 WORKDIR /workspace
@@ -60,9 +63,12 @@ COPY pyproject.toml README.md LICENSE ./
 COPY nanovllm/ ./nanovllm/
 COPY example.py bench.py ./
 
-# Install the package
-# Note: flash-attn compilation takes a while
-RUN pip install --no-cache-dir -e .
+# Install remaining dependencies (transformers, xxhash)
+# flash-attn is already installed, torch/triton are already installed
+RUN pip install --no-cache-dir transformers>=4.51.0 xxhash
+
+# Install the package without dependencies (all already installed)
+RUN pip install --no-cache-dir -e . --no-deps
 
 # Install huggingface-cli for model download
 RUN pip install --no-cache-dir huggingface-hub
