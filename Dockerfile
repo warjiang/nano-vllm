@@ -25,6 +25,7 @@ ENV PYTHONUNBUFFERED=1
 ENV CUDA_HOME=/usr/local/cuda
 ENV PATH=${CUDA_HOME}/bin:${PATH}
 ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+ENV MAX_JOBS=4
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -42,18 +43,21 @@ RUN apt-get update && apt-get install -y \
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1
 
-# Upgrade pip
-RUN python -m pip install --upgrade pip setuptools wheel
+# Upgrade pip and install build tools
+RUN python -m pip install --upgrade pip setuptools wheel packaging ninja
 
-# Install PyTorch with CUDA support first (required for flash-attn build)
-RUN pip install --no-cache-dir \
-    packaging \
-    ninja \
-    torch>=2.4.0 \
-    triton>=3.0.0
+# Install PyTorch with CUDA support
+RUN pip install --no-cache-dir torch>=2.4.0 triton>=3.0.0
 
-# Install flash-attn separately (requires torch to be installed first)
-RUN pip install --no-cache-dir flash-attn --no-build-isolation
+# Install flash-attn from source with proper environment
+# First clone the repo, then install
+RUN git clone --depth 1 --branch v2.8.3 https://github.com/Dao-AILab/flash-attention.git /tmp/flash-attention && \
+    cd /tmp/flash-attention && \
+    pip install --no-cache-dir . --no-build-isolation && \
+    rm -rf /tmp/flash-attention
+
+# Install other dependencies
+RUN pip install --no-cache-dir transformers>=4.51.0 xxhash
 
 # Set working directory
 WORKDIR /workspace
@@ -62,10 +66,6 @@ WORKDIR /workspace
 COPY pyproject.toml README.md LICENSE ./
 COPY nanovllm/ ./nanovllm/
 COPY example.py bench.py ./
-
-# Install remaining dependencies (transformers, xxhash)
-# flash-attn is already installed, torch/triton are already installed
-RUN pip install --no-cache-dir transformers>=4.51.0 xxhash
 
 # Install the package without dependencies (all already installed)
 RUN pip install --no-cache-dir -e . --no-deps
