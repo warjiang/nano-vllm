@@ -82,8 +82,7 @@ ENV HUGGINGFACE_HUB_CACHE=/workspace/.cache/huggingface/hub
 
 # Download default model (Qwen/Qwen3-0.6B) during build
 # This makes the image ready to use immediately
-RUN mkdir -p /workspace/models/Qwen3-0.6B && \
-    if [ "${DOWNLOAD_MODEL}" = "1" ]; then python -m huggingface_hub.cli download Qwen/Qwen3-0.6B --local-dir /workspace/models/Qwen3-0.6B --local-dir-use-symlinks False; fi
+RUN huggingface-cli download --resume-download Qwen/Qwen3-0.6B
 
 # Expose port for potential API service
 EXPOSE 8000
