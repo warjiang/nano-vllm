@@ -4,7 +4,11 @@ from transformers import AutoTokenizer
 
 
 def main():
-    path = os.path.expanduser("~/huggingface/Qwen3-0.6B/")
+    # Use the default model path in container, fallback to local path
+    path = os.environ.get("MODEL_PATH", "/workspace/models/Qwen3-0.6B")
+    if not os.path.exists(path):
+        path = os.path.expanduser("~/huggingface/Qwen3-0.6B/")
+    
     tokenizer = AutoTokenizer.from_pretrained(path)
     llm = LLM(path, enforce_eager=True, tensor_parallel_size=1)
 
