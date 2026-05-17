@@ -60,6 +60,37 @@ See `bench.py` for benchmark.
 | vLLM           | 133,966     | 98.37    | 1361.84               |
 | Nano-vLLM      | 133,966     | 93.41    | 1434.13               |
 
+## Remote Docker Dev Workflow
+
+Configure defaults in `.env` first (recommended), then use these scripts from local:
+
+```bash
+# 1) One-time sync local code -> remote mount path
+./scripts/dev_sync_once.sh
+
+# 2) Keep syncing while you edit locally
+./scripts/dev_sync_watch.sh
+
+# 3) From local, ssh to remote and run docker with volume mount + pip install -e .
+./scripts/dev_run_remote_docker.sh
+```
+
+By default, the scripts use:
+- Remote host: `<REMOTE_HOST>`
+- Remote sync path: `/data00/dev/$USER/nano-vllm-sync`
+- Container mount: `${REMOTE_SYNC_DIR} -> /workspace/nano-vllm`
+- Models mount: `/data00/models -> /workspace/models:ro`
+- Image: `<PRIVATE_IMAGE>`
+
+You can override with environment variables:
+
+```bash
+REMOTE_HOST=<REMOTE_HOST> \
+REMOTE_SYNC_DIR=/data00/dev/$USER/nano-vllm-sync \
+MODEL_DIR=/data00/models \
+IMAGE=<PRIVATE_IMAGE> \
+./scripts/dev_run_remote_docker.sh
+```
 
 ## Star History
 
